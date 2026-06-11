@@ -9,15 +9,27 @@ export const metadata = {
     "Overzicht van alle organisaties in het Brabantse AI-ecosysteem.",
 };
 
-export default async function StakeholdersPage() {
+export default async function StakeholdersPage({
+  searchParams,
+}: {
+  searchParams: { pijler?: string; categorie?: string };
+}) {
   const stakeholders = await fetchStakeholders().catch(() => []);
 
   const regios = Array.from(
-    new Set(stakeholders.map((s) => s.vestigingsregio).filter((x): x is string => typeof x === "string" && x.length > 0))
+    new Set(
+      stakeholders
+        .map((s) => s.vestigingsregio)
+        .filter((x): x is string => typeof x === "string" && x.length > 0)
+    )
   ).sort((a, b) => a.localeCompare(b, "nl"));
 
   const categories = Array.from(
-    new Set(stakeholders.flatMap((s) => s.categorieMeerwaarde).filter((x): x is string => typeof x === "string" && x.length > 0))
+    new Set(
+      stakeholders
+        .flatMap((s) => s.categorieMeerwaarde)
+        .filter((x): x is string => typeof x === "string" && x.length > 0)
+    )
   ).sort((a, b) => a.localeCompare(b, "nl"));
 
   return (
@@ -32,6 +44,8 @@ export default async function StakeholdersPage() {
         stakeholders={stakeholders}
         regios={regios}
         categories={categories}
+        initialPijler={searchParams.pijler ?? ""}
+        initialCategorie={searchParams.categorie ?? ""}
       />
     </div>
   );

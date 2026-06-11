@@ -1,5 +1,26 @@
 import Link from "next/link";
 
+const PIJLERS = [
+  {
+    label: "AI Adoptie",
+    desc: "Organisaties die AI in de praktijk brengen",
+    icon: "🏭",
+    href: "/stakeholders?pijler=AI+Adoptie",
+  },
+  {
+    label: "AI Innovatie",
+    desc: "Onderzoek en nieuwe AI-toepassingen",
+    icon: "🔬",
+    href: "/stakeholders?pijler=AI+Innovatie",
+  },
+  {
+    label: "Talent & Educatie",
+    desc: "Opleidingen, kennisdeling en bewustwording",
+    icon: "🎓",
+    href: "/stakeholders?categorie=Educatie",
+  },
+];
+
 export default function HomePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-32">
@@ -37,35 +58,31 @@ export default function HomePage() {
               />
             </svg>
           </Link>
+          <Link
+            href="/kaart"
+            className="inline-flex items-center justify-center gap-2 border border-brand text-brand px-6 py-3 rounded-lg font-medium hover:bg-brand-muted transition-colors"
+          >
+            Bekijk op kaart
+          </Link>
         </div>
       </div>
 
       <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          {
-            label: "AI Adoptie",
-            desc: "Organisaties die AI in praktijk brengen",
-            icon: "🏭",
-          },
-          {
-            label: "AI Innovatie",
-            desc: "Onderzoek en nieuwe toepassingen",
-            icon: "🔬",
-          },
-          {
-            label: "Talent & Educatie",
-            desc: "Opleidingen en kennisdeling",
-            icon: "🎓",
-          },
-        ].map((item) => (
-          <div
+        {PIJLERS.map((item) => (
+          <Link
             key={item.label}
-            className="border border-gray-100 rounded-xl p-6 bg-white hover:border-brand/30 hover:shadow-sm transition-all"
+            href={item.href}
+            className="group border border-gray-100 rounded-xl p-6 bg-white hover:border-brand/40 hover:shadow-md transition-all"
           >
             <div className="text-2xl mb-3">{item.icon}</div>
-            <h3 className="font-semibold text-gray-900 mb-1">{item.label}</h3>
-            <p className="text-sm text-gray-500">{item.desc}</p>
-          </div>
+            <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-brand transition-colors">
+              {item.label}
+            </h3>
+            <p className="text-sm text-gray-500 mb-3">{item.desc}</p>
+            <span className="text-xs text-brand font-medium group-hover:underline">
+              Bekijk stakeholders →
+            </span>
+          </Link>
         ))}
       </div>
     </div>

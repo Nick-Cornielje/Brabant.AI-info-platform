@@ -8,16 +8,21 @@ interface Props {
   stakeholders: Stakeholder[];
   regios: string[];
   categories: string[];
+  initialPijler?: string;
+  initialCategorie?: string;
 }
 
 export default function StakeholderGrid({
   stakeholders,
   regios,
   categories,
+  initialPijler = "",
+  initialCategorie = "",
 }: Props) {
   const [search, setSearch] = useState("");
   const [selectedRegio, setSelectedRegio] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategorie);
+  const [selectedPijler, setSelectedPijler] = useState(initialPijler);
 
   const filtered = useMemo(() => {
     return stakeholders.filter((s) => {
@@ -31,14 +36,44 @@ export default function StakeholderGrid({
         s.categorieMeerwaarde.some((c) =>
           c.toLowerCase().includes(selectedCategory.toLowerCase())
         );
-      return matchSearch && matchRegio && matchCategory;
+      const matchPijler =
+        selectedPijler === "" ||
+        s.pijlers.some((p) =>
+          p.toLowerCase().includes(selectedPijler.toLowerCase())
+        );
+      return matchSearch && matchRegio && matchCategory && matchPijler;
     });
-  }, [stakeholders, search, selectedRegio, selectedCategory]);
+  }, [stakeholders, search, selectedRegio, selectedCategory, selectedPijler]);
+
+  const hasActiveFilter =
+    search || selectedRegio || selectedCategory || selectedPijler;
+
+  function clearFilters() {
+    setSearch("");
+    setSelectedRegio("");
+    setSelectedCategory("");
+    setSelectedPijler("");
+  }
 
   return (
     <div>
+      {/* Active pijler banner */}
+      {selectedPijler && (
+        <div className="flex items-center gap-2 mb-4 bg-brand-muted text-brand text-sm px-4 py-2 rounded-lg">
+          <span>
+            Gefilterd op pijler: <strong>{selectedPijler}</strong>
+          </span>
+          <button
+            onClick={() => setSelectedPijler("")}
+            className="ml-auto text-brand hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-8">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="search"
           placeholder="Zoek op naam..."
@@ -72,10 +107,20 @@ export default function StakeholderGrid({
         </select>
       </div>
 
-      {/* Result count */}
-      <p className="text-sm text-gray-500 mb-6">
-        {filtered.length} van {stakeholders.length} stakeholders
-      </p>
+      {/* Result count + clear */}
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-500">
+          {filtered.length} van {stakeholders.length} stakeholders
+        </p>
+        {hasActiveFilter && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-gray-400 hover:text-brand transition-colors"
+          >
+            Filters wissen
+          </button>
+        )}
+      </div>
 
       {/* Grid */}
       {filtered.length === 0 ? (

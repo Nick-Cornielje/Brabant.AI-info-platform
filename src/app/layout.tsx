@@ -37,6 +37,12 @@ export default function RootLayout({
               >
                 Stakeholders
               </a>
+              <a
+                href="/kaart"
+                className="hover:text-brand transition-colors"
+              >
+                Kaart
+              </a>
             </nav>
           </div>
         </header>
