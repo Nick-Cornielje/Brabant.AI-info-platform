@@ -3,10 +3,15 @@ import Link from "next/link";
 import { fetchStakeholders, fetchStakeholderBySlug } from "@/lib/airtable";
 
 export const revalidate = 3600;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const stakeholders = await fetchStakeholders();
-  return stakeholders.map((s) => ({ slug: s.slug }));
+  try {
+    const stakeholders = await fetchStakeholders();
+    return stakeholders.map((s) => ({ slug: s.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

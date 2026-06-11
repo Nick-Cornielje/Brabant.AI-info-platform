@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function StakeholdersPage() {
-  const stakeholders = await fetchStakeholders();
+  const stakeholders = await fetchStakeholders().catch(() => []);
 
   const regios = Array.from(
     new Set(stakeholders.map((s) => s.vestigingsregio).filter(Boolean))
