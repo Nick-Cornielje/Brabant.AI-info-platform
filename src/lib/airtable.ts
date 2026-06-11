@@ -17,20 +17,8 @@ export interface Stakeholder {
 
 interface AirtableRecord {
   id: string;
-  fields: {
-    Stakeholder?: string;
-    url?: string;
-    Vestigingsplaats?: string;
-    Vestigingsregio?: string;
-    "reach geografisch"?: string;
-    "Draagt bij aan Pijlers:"?: string[];
-    "Draagt bij aan Randvoorwaarden:"?: string[];
-    "Categorie meerwaarde"?: string[];
-    "AI Waardeketen rol"?: string[];
-    "Interessant voor"?: string[];
-    "Funding type"?: string;
-    "Organisatie type"?: string;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fields: Record<string, any>;
 }
 
 interface AirtableResponse {
@@ -46,24 +34,37 @@ export function toSlug(name: string): string {
     .replace(/\s+/g, "-");
 }
 
+function str(val: unknown): string {
+  if (typeof val === "string") return val;
+  if (val == null) return "";
+  return String(val);
+}
+
+function strArray(val: unknown): string[] {
+  if (Array.isArray(val)) return val.map(str).filter(Boolean);
+  if (typeof val === "string" && val.length > 0)
+    return val.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
 function mapRecord(record: AirtableRecord): Stakeholder {
   const f = record.fields;
-  const name = f["Stakeholder"] ?? "";
+  const name = str(f["Stakeholder"]);
   return {
     id: record.id,
     slug: toSlug(name),
     name,
-    url: f["url"] ?? "",
-    vestigingsplaats: f["Vestigingsplaats"] ?? "",
-    vestigingsregio: f["Vestigingsregio"] ?? "",
-    reachGeografisch: f["reach geografisch"] ?? "",
-    pijlers: f["Draagt bij aan Pijlers:"] ?? [],
-    randvoorwaarden: f["Draagt bij aan Randvoorwaarden:"] ?? [],
-    categorieMeerwaarde: (f["Categorie meerwaarde"] ?? []).filter((x): x is string => typeof x === "string"),
-    aiWaardekettenRol: (f["AI Waardeketen rol"] ?? []).filter((x): x is string => typeof x === "string"),
-    interessantVoor: (f["Interessant voor"] ?? []).filter((x): x is string => typeof x === "string"),
-    fundingType: f["Funding type"] ?? "",
-    organisatieType: f["Organisatie type"] ?? "",
+    url: str(f["url"]),
+    vestigingsplaats: str(f["Vestigingsplaats"]),
+    vestigingsregio: str(f["Vestigingsregio"]),
+    reachGeografisch: str(f["reach geografisch"]),
+    pijlers: strArray(f["Draagt bij aan Pijlers:"]),
+    randvoorwaarden: strArray(f["Draagt bij aan Randvoorwaarden:"]),
+    categorieMeerwaarde: strArray(f["Categorie meerwaarde"]),
+    aiWaardekettenRol: strArray(f["AI Waardeketen rol"]),
+    interessantVoor: strArray(f["Interessant voor"]),
+    fundingType: str(f["Funding type"]),
+    organisatieType: str(f["Organisatie type"]),
   };
 }
 
@@ -80,9 +81,7 @@ export async function fetchStakeholders(): Promise<Stakeholder[]> {
   let offset: string | undefined;
 
   do {
-    const url = new URL(
-      `https://api.airtable.com/v0/${baseId}/${tableId}`
-    );
+    const url = new URL(`https://api.airtable.com/v0/${baseId}/${tableId}`);
     url.searchParams.set("pageSize", "100");
     if (offset) url.searchParams.set("offset", offset);
 
