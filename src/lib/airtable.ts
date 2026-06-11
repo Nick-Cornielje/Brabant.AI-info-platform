@@ -59,9 +59,9 @@ function mapRecord(record: AirtableRecord): Stakeholder {
     reachGeografisch: f["reach geografisch"] ?? "",
     pijlers: f["Draagt bij aan Pijlers:"] ?? [],
     randvoorwaarden: f["Draagt bij aan Randvoorwaarden:"] ?? [],
-    categorieMeerwaarde: f["Categorie meerwaarde"] ?? [],
-    aiWaardekettenRol: f["AI Waardeketen rol"] ?? [],
-    interessantVoor: f["Interessant voor"] ?? [],
+    categorieMeerwaarde: (f["Categorie meerwaarde"] ?? []).filter((x): x is string => typeof x === "string"),
+    aiWaardekettenRol: (f["AI Waardeketen rol"] ?? []).filter((x): x is string => typeof x === "string"),
+    interessantVoor: (f["Interessant voor"] ?? []).filter((x): x is string => typeof x === "string"),
     fundingType: f["Funding type"] ?? "",
     organisatieType: f["Organisatie type"] ?? "",
   };

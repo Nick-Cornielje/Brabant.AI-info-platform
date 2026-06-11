@@ -13,11 +13,11 @@ export default async function StakeholdersPage() {
   const stakeholders = await fetchStakeholders().catch(() => []);
 
   const regios = Array.from(
-    new Set(stakeholders.map((s) => s.vestigingsregio).filter(Boolean))
+    new Set(stakeholders.map((s) => s.vestigingsregio).filter((x): x is string => typeof x === "string" && x.length > 0))
   ).sort((a, b) => a.localeCompare(b, "nl"));
 
   const categories = Array.from(
-    new Set(stakeholders.flatMap((s) => s.categorieMeerwaarde).filter(Boolean))
+    new Set(stakeholders.flatMap((s) => s.categorieMeerwaarde).filter((x): x is string => typeof x === "string" && x.length > 0))
   ).sort((a, b) => a.localeCompare(b, "nl"));
 
   return (
