@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
-const ForceGraph2D = dynamic(() => import("react-force-graph").then((m) => m.ForceGraph2D), {
-  ssr: false,
-});
+const ForceGraph2D = dynamic(
+  () => import("react-force-graph").then((m) => m.ForceGraph2D),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-sm text-gray-400">Graf laden…</div> }
+);
 
 interface NodeData {
   id: string;
@@ -59,6 +60,7 @@ export default function EcosysteemGraph({
 }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [selectedRegio, setSelectedRegio] = useState("");
   const [selectedPijler, setSelectedPijler] = useState("");
@@ -67,14 +69,18 @@ export default function EcosysteemGraph({
   const [tab, setTab] = useState<"graph" | "stats">("graph");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current) return;
     const obs = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height: Math.max(height, 500) });
+      setDimensions({ width: Math.max(width, 300), height: Math.max(height, 500) });
     });
     obs.observe(containerRef.current);
     return () => obs.disconnect();
-  }, []);
+  }, [mounted]);
 
   const filteredNodeIds = new Set(
     nodes
@@ -229,40 +235,42 @@ export default function EcosysteemGraph({
             className="w-full rounded-xl border border-gray-100 overflow-hidden bg-gray-50"
             style={{ height: 600 }}
           >
-            <ForceGraph2D
-              graphData={graphData}
-              width={dimensions.width}
-              height={dimensions.height}
-              nodeLabel="name"
-              nodeColor={(node) => (node as NodeData).color}
-              nodeRelSize={5}
-              linkColor={(link) =>
-                (link as LinkData).type === "hierarchy" ? "#94A3B8" : "#CBD5E1"
-              }
-              linkWidth={(link) =>
-                (link as LinkData).type === "hierarchy" ? 1.5 : 1
-              }
-              linkDirectionalArrowLength={(link) =>
-                (link as LinkData).type === "hierarchy" ? 4 : 0
-              }
-              linkDirectionalArrowRelPos={1}
-              onNodeClick={handleNodeClick as (node: object) => void}
-              nodeCanvasObject={(node, ctx, globalScale) => {
-                const n = node as NodeData & { x: number; y: number };
-                const label = n.name;
-                const fontSize = Math.max(10 / globalScale, 2);
-                ctx.beginPath();
-                ctx.arc(n.x, n.y, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = n.color;
-                ctx.fill();
-                if (globalScale > 1.5) {
-                  ctx.font = `${fontSize}px Inter, sans-serif`;
-                  ctx.fillStyle = "#374151";
-                  ctx.textAlign = "center";
-                  ctx.fillText(label, n.x, n.y + 9);
+            {mounted && (
+              <ForceGraph2D
+                graphData={graphData}
+                width={dimensions.width}
+                height={dimensions.height}
+                nodeLabel="name"
+                nodeColor={(node) => (node as NodeData).color}
+                nodeRelSize={5}
+                linkColor={(link) =>
+                  (link as LinkData).type === "hierarchy" ? "#94A3B8" : "#CBD5E1"
                 }
-              }}
-            />
+                linkWidth={(link) =>
+                  (link as LinkData).type === "hierarchy" ? 1.5 : 1
+                }
+                linkDirectionalArrowLength={(link) =>
+                  (link as LinkData).type === "hierarchy" ? 4 : 0
+                }
+                linkDirectionalArrowRelPos={1}
+                onNodeClick={(node) => handleNodeClick(node as NodeData)}
+                nodeCanvasObject={(node, ctx, globalScale) => {
+                  const n = node as NodeData & { x?: number; y?: number };
+                  if (n.x == null || n.y == null) return;
+                  const fontSize = Math.max(10 / globalScale, 2);
+                  ctx.beginPath();
+                  ctx.arc(n.x, n.y, 5, 0, 2 * Math.PI);
+                  ctx.fillStyle = n.color || "#9CA3AF";
+                  ctx.fill();
+                  if (globalScale > 1.5) {
+                    ctx.font = `${fontSize}px sans-serif`;
+                    ctx.fillStyle = "#374151";
+                    ctx.textAlign = "center";
+                    ctx.fillText(n.name, n.x, n.y + 9);
+                  }
+                }}
+              />
+            )}
           </div>
           <p className="text-xs text-gray-400 mt-2 text-center">
             Klik op een knoop om de partijpagina te openen. Zoom en sleep om te navigeren.
