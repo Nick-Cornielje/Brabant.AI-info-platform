@@ -37,7 +37,7 @@ export interface AirtableEvent {
   time: string;
   cost: string;
   doelgroep: string[];
-  goal: string;
+  goal: string[];
   language: string;
   summary: string;
   sector: string[];
@@ -74,7 +74,7 @@ function str(val: unknown): string {
 function strArray(val: unknown): string[] {
   if (Array.isArray(val)) return val.map(str).filter(Boolean);
   if (typeof val === "string" && val.length > 0)
-    return val.split(",").map((s) => s.trim()).filter(Boolean);
+    return val.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
   return [];
 }
 
@@ -100,11 +100,11 @@ function mapRecord(record: AirtableRecord): Stakeholder {
     randvoorwaarden: strArray(f["Draagt bij aan Randvoorwaarden:"]),
     categorieMeerwaarde: strArray(f["Categorie meerwaarde"]),
     aiWaardekettenRol: strArray(f["AI Waardeketen rol"]),
-    interessantVoor: strArray(f["Interessant voor"]),
+    interessantVoor: strArray(f["Interessant voor (doelgroepen)"]),
     fundingType: str(f["Funding type"]),
     organisatieType: str(f["Organisatie type"]),
     onderdeelVanIds: idArray(f["Onderdeel van"]),
-    bevatOnderdelenIds: idArray(f["bevat / onderdelen"]),
+    bevatOnderdelenIds: idArray(f["From field: Onderdeel van"]),
     samenwerktMetIds: idArray(f["Samenwerkt met"]),
     onderdeelVan: [],
     bevatOnderdelen: [],
@@ -202,6 +202,9 @@ export async function fetchEvents(): Promise<AirtableEvent[]> {
 
   const records = await fetchAllRecords(apiKey, baseId, tableId);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return records
     .filter((r) => r.fields["event_name"])
     .map((r) => {
@@ -214,7 +217,7 @@ export async function fetchEvents(): Promise<AirtableEvent[]> {
         time: str(f["event_time"]),
         cost: str(f["event_cost"]),
         doelgroep: strArray(f["event_doelgroep"]),
-        goal: str(f["event_goal"]),
+        goal: strArray(f["event_goal"]),
         language: str(f["event_language"]),
         summary: str(f["event_summary"]),
         sector: strArray(f["event_sector"]),
@@ -222,6 +225,10 @@ export async function fetchEvents(): Promise<AirtableEvent[]> {
         link: str(f["event_link"]),
         registration: str(f["event_registration"]),
       };
+    })
+    .filter((e) => {
+      if (!e.date) return true;
+      return new Date(e.date) >= today;
     })
     .sort((a, b) => {
       if (!a.date && !b.date) return 0;
