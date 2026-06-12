@@ -38,6 +38,18 @@ export default function RootLayout({
                 Stakeholders
               </a>
               <a
+                href="/trainingen"
+                className="hover:text-brand transition-colors"
+              >
+                Trainingen
+              </a>
+              <a
+                href="/ecosysteem"
+                className="hover:text-brand transition-colors"
+              >
+                Ecosysteem
+              </a>
+              <a
                 href="/kaart"
                 className="hover:text-brand transition-colors"
               >

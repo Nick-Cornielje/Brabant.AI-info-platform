@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const PIJLERS = [
+const INGANGEN = [
   {
     label: "AI Adoptie",
     desc: "Organisaties die AI in de praktijk brengen",
@@ -18,6 +18,18 @@ const PIJLERS = [
     desc: "Opleidingen, kennisdeling en bewustwording",
     icon: "🎓",
     href: "/stakeholders?categorie=Educatie",
+  },
+  {
+    label: "Trainingen & ondersteuning",
+    desc: "Vind AI-trainingen en ondersteuningsprogramma's voor ondernemers",
+    icon: "📚",
+    href: "/trainingen",
+  },
+  {
+    label: "Inzicht in het ecosysteem",
+    desc: "Relaties en verhoudingen tussen partijen in kaart",
+    icon: "🕸️",
+    href: "/ecosysteem",
   },
 ];
 
@@ -68,7 +80,7 @@ export default function HomePage() {
       </div>
 
       <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {PIJLERS.map((item) => (
+        {INGANGEN.map((item) => (
           <Link
             key={item.label}
             href={item.href}
