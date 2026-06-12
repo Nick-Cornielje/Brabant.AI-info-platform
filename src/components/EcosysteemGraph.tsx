@@ -1,13 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-
-const ForceGraph2D = dynamic(
-  () => import("react-force-graph").then((m) => m.ForceGraph2D),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-sm text-gray-400">Graf laden…</div> }
-);
 
 interface NodeData {
   id: string;
@@ -51,6 +45,53 @@ function getColor(typeEntiteit: string): string {
   return TYPE_COLORS[typeEntiteit] || "#9CA3AF";
 }
 
+interface PositionedNode extends NodeData {
+  x: number;
+  y: number;
+}
+
+function layoutNodes(nodes: NodeData[]): PositionedNode[] {
+  // Group by typeEntiteit
+  const groups: Record<string, NodeData[]> = {};
+  for (const n of nodes) {
+    const key = n.typeEntiteit || "Overig";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  }
+
+  const groupKeys = Object.keys(groups);
+  const totalGroups = groupKeys.length;
+  const W = 900;
+  const H = 600;
+  const cx = W / 2;
+  const cy = H / 2;
+  const groupRadius = Math.min(cx, cy) * 0.72;
+
+  const result: PositionedNode[] = [];
+
+  groupKeys.forEach((key, gi) => {
+    const angle = (gi / totalGroups) * 2 * Math.PI - Math.PI / 2;
+    const gx = cx + groupRadius * Math.cos(angle);
+    const gy = cy + groupRadius * Math.sin(angle);
+
+    const members = groups[key];
+    const count = members.length;
+    const nodeSpread = Math.min(80, 20 + count * 6);
+
+    members.forEach((n, ni) => {
+      const na = count === 1 ? 0 : (ni / count) * 2 * Math.PI;
+      const nr = count === 1 ? 0 : nodeSpread;
+      result.push({
+        ...n,
+        x: gx + nr * Math.cos(na),
+        y: gy + nr * Math.sin(na),
+      });
+    });
+  });
+
+  return result;
+}
+
 export default function EcosysteemGraph({
   nodes,
   links,
@@ -59,53 +100,51 @@ export default function EcosysteemGraph({
   pijlerCounts,
 }: Props) {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [selectedRegio, setSelectedRegio] = useState("");
   const [selectedPijler, setSelectedPijler] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedFunding, setSelectedFunding] = useState("");
   const [tab, setTab] = useState<"graph" | "stats">("graph");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const obs = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width: Math.max(width, 300), height: Math.max(height, 500) });
-    });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
-  }, [mounted]);
-
-  const filteredNodeIds = new Set(
-    nodes
-      .filter((n) => {
-        if (selectedRegio && n.vestigingsregio !== selectedRegio) return false;
-        if (selectedPijler && !n.pijlers.includes(selectedPijler)) return false;
-        if (selectedType && n.typeEntiteit !== selectedType) return false;
-        if (selectedFunding && n.fundingType !== selectedFunding) return false;
-        return true;
-      })
-      .map((n) => n.id)
+  const filteredNodeIds = useMemo(
+    () =>
+      new Set(
+        nodes
+          .filter((n) => {
+            if (selectedRegio && n.vestigingsregio !== selectedRegio) return false;
+            if (selectedPijler && !n.pijlers.includes(selectedPijler)) return false;
+            if (selectedType && n.typeEntiteit !== selectedType) return false;
+            if (selectedFunding && n.fundingType !== selectedFunding) return false;
+            return true;
+          })
+          .map((n) => n.id)
+      ),
+    [nodes, selectedRegio, selectedPijler, selectedType, selectedFunding]
   );
 
-  const graphData = {
-    nodes: nodes
-      .filter((n) => filteredNodeIds.has(n.id))
-      .map((n) => ({ ...n, color: getColor(n.typeEntiteit) })),
-    links: links.filter(
-      (l) => filteredNodeIds.has(l.source as string) && filteredNodeIds.has(l.target as string)
-    ),
-  };
+  const visibleNodes = useMemo(
+    () => nodes.filter((n) => filteredNodeIds.has(n.id)),
+    [nodes, filteredNodeIds]
+  );
+
+  const visibleLinks = useMemo(
+    () =>
+      links.filter(
+        (l) => filteredNodeIds.has(l.source) && filteredNodeIds.has(l.target)
+      ),
+    [links, filteredNodeIds]
+  );
+
+  const positioned = useMemo(() => layoutNodes(visibleNodes), [visibleNodes]);
+  const posMap = useMemo(
+    () => new Map(positioned.map((n) => [n.id, n])),
+    [positioned]
+  );
 
   const handleNodeClick = useCallback(
-    (node: NodeData) => {
-      router.push(`/stakeholders/${node.slug}`);
+    (slug: string) => {
+      router.push(`/stakeholders/${slug}`);
     },
     [router]
   );
@@ -113,9 +152,13 @@ export default function EcosysteemGraph({
   const regios = Object.keys(regioCounts).sort();
   const pijlers = Object.keys(pijlerCounts).sort();
   const types = Object.keys(typeCounts).sort();
-  const fundings = Array.from(new Set(nodes.map((n) => n.fundingType).filter(Boolean))).sort();
+  const fundings = Array.from(
+    new Set(nodes.map((n) => n.fundingType).filter(Boolean))
+  ).sort();
 
   const hasFilter = selectedRegio || selectedPijler || selectedType || selectedFunding;
+
+  const hoveredNode = hoveredId ? posMap.get(hoveredId) : null;
 
   return (
     <div>
@@ -201,13 +244,13 @@ export default function EcosysteemGraph({
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
-        {graphData.nodes.length} partijen · {graphData.links.length} relaties
+        {visibleNodes.length} partijen · {visibleLinks.length} relaties
       </p>
 
       {tab === "graph" ? (
         <div>
           {/* Legend */}
-          <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             {Object.entries(TYPE_COLORS).map(([type, color]) => {
               if (!typeCounts[type]) return null;
               return (
@@ -230,51 +273,74 @@ export default function EcosysteemGraph({
             })}
           </div>
 
-          <div
-            ref={containerRef}
-            className="w-full rounded-xl border border-gray-100 overflow-hidden bg-gray-50"
-            style={{ height: 600 }}
-          >
-            {mounted && (
-              <ForceGraph2D
-                graphData={graphData}
-                width={dimensions.width}
-                height={dimensions.height}
-                nodeLabel="name"
-                nodeColor={(node) => (node as NodeData).color}
-                nodeRelSize={5}
-                linkColor={(link) =>
-                  (link as LinkData).type === "hierarchy" ? "#94A3B8" : "#CBD5E1"
-                }
-                linkWidth={(link) =>
-                  (link as LinkData).type === "hierarchy" ? 1.5 : 1
-                }
-                linkDirectionalArrowLength={(link) =>
-                  (link as LinkData).type === "hierarchy" ? 4 : 0
-                }
-                linkDirectionalArrowRelPos={1}
-                onNodeClick={(node) => handleNodeClick(node as NodeData)}
-                nodeCanvasObject={(node, ctx, globalScale) => {
-                  const n = node as NodeData & { x?: number; y?: number };
-                  if (n.x == null || n.y == null) return;
-                  const fontSize = Math.max(10 / globalScale, 2);
-                  ctx.beginPath();
-                  ctx.arc(n.x, n.y, 5, 0, 2 * Math.PI);
-                  ctx.fillStyle = n.color || "#9CA3AF";
-                  ctx.fill();
-                  if (globalScale > 1.5) {
-                    ctx.font = `${fontSize}px sans-serif`;
-                    ctx.fillStyle = "#374151";
-                    ctx.textAlign = "center";
-                    ctx.fillText(n.name, n.x, n.y + 9);
-                  }
-                }}
-              />
+          <div className="relative w-full rounded-xl border border-gray-100 overflow-hidden bg-gray-50" style={{ paddingBottom: "66%" }}>
+            <svg
+              viewBox="0 0 900 600"
+              className="absolute inset-0 w-full h-full"
+              style={{ display: "block" }}
+            >
+              {/* Links */}
+              {visibleLinks.map((link, i) => {
+                const src = posMap.get(link.source);
+                const tgt = posMap.get(link.target);
+                if (!src || !tgt) return null;
+                const isHierarchy = link.type === "hierarchy";
+                return (
+                  <line
+                    key={i}
+                    x1={src.x}
+                    y1={src.y}
+                    x2={tgt.x}
+                    y2={tgt.y}
+                    stroke={isHierarchy ? "#94A3B8" : "#CBD5E1"}
+                    strokeWidth={isHierarchy ? 1.5 : 1}
+                    strokeDasharray={isHierarchy ? undefined : "4 3"}
+                    opacity={hoveredId && hoveredId !== src.id && hoveredId !== tgt.id ? 0.15 : 0.6}
+                  />
+                );
+              })}
+
+              {/* Nodes */}
+              {positioned.map((node) => {
+                const isHovered = hoveredId === node.id;
+                const isDimmed = hoveredId !== null && !isHovered;
+                return (
+                  <g
+                    key={node.id}
+                    transform={`translate(${node.x},${node.y})`}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleNodeClick(node.slug)}
+                    onMouseEnter={() => setHoveredId(node.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                  >
+                    <circle
+                      r={isHovered ? 8 : 5}
+                      fill={getColor(node.typeEntiteit)}
+                      opacity={isDimmed ? 0.2 : 1}
+                      style={{ transition: "r 0.1s, opacity 0.1s" }}
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Hover tooltip */}
+            {hoveredNode && (
+              <div className="absolute bottom-3 left-3 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-md text-xs pointer-events-none max-w-xs">
+                <p className="font-semibold text-gray-900">{hoveredNode.name}</p>
+                {hoveredNode.typeEntiteit && (
+                  <p className="text-gray-500 mt-0.5">{hoveredNode.typeEntiteit}</p>
+                )}
+                {hoveredNode.vestigingsregio && (
+                  <p className="text-gray-400">{hoveredNode.vestigingsregio}</p>
+                )}
+              </div>
             )}
           </div>
+
           <p className="text-xs text-gray-400 mt-2 text-center">
-            Klik op een knoop om de partijpagina te openen. Zoom en sleep om te navigeren.
-            Pijlen = hiërarchie · Lijnen = samenwerking.
+            Klik op een knoop om de partijpagina te openen. Hover voor naam.
+            Gestippeld = samenwerking · Doorgetrokken = hiërarchie.
           </p>
         </div>
       ) : (
